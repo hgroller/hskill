@@ -1,0 +1,337 @@
+envSetVal("layout" "modalCommands" 'boolean nil) 
+
+
+
+
+
+procedure(build_ref_pt()
+        ref_pt = enterPoint(?prompts list("Please Enter Ref Point"))
+);
+
+
+procedure(SymLoc()
+          cv = geGetEditCellView()
+	  pt = enterPoint(?prompts list("Please Enter Symmetry Point"))
+          bget = cv~>bBox;
+	  ll= lowerLeft(bget);
+	  ur = upperRight(bget);
+dbCreateLine(cv list( "hilite" "drawing") list(nth(0 pt):0 nth(0 pt):nth(1 ur)) )
+	     )
+
+
+
+
+procedure(mirpath()
+                 cv = geGetEditCellView()
+                     lsel = nth(3 layerField1~>value)
+                       lsel = parseString(lsel);
+                       lsel = nth(0 lsel); 
+                       epth( )
+                     pth1 = dbCreatePath(cv list(lsel "drawing") lpts someInt~>value) ptmir()
+		 pth2 = dbCreatePath(cv list(lsel "drawing") newShapeList someInt~>value)
+)
+
+
+procedure(crosspath()
+       cv = geGetEditCellView()
+                 
+		 AAsel = nth(3 AA~>value)
+                 AAsel = parseString(AAsel);
+                 AAsel = nth(0 AAsel); 
+	         
+		 BBsel = nth(3 BB~>value)
+                 BBsel = parseString(BBsel);
+                 BBsel = nth(0 BBsel); 
+                 epth( )
+                 pth1 = dbCreatePath(cv list(AAsel "drawing") lpts someInt~>value) 
+                 ptmir()
+                 pth2 = dbCreatePath(cv list(BBsel "drawing") newShapeList someInt~>value)
+)
+
+
+
+procedure(ptmir()
+ptx = nth(0 pt);
+newShapeList = '()
+foreach(pts lpts
+       mlx = nth(0 pts)
+       mly = nth(1 pts);
+       
+       mldif = ptx - mlx;
+       mldif = mldif + ptx;
+      
+      
+       xypts = mldif:mly
+       newShapeList = cons(xypts newShapeList) 
+       
+       );endfor
+       
+       );endprocedure
+       
+;encrypt("originalSkillTextFile.il" "encryptedSkillFile.ile")
+
+procedure( returnPoints( w_windowId b_done l_points )
+
+        printf( "List of points entered %L\n" l_points )
+       lpts = l_points;
+
+)
+
+
+procedure( pointsDone( w done pts )
+   if( done then
+      ampts = pts;
+      printf("Points entered were %L.\n" pts)
+   else
+      println("Point entry aborted.")
+   )
+)
+
+procedure(addmir()
+enterPoints( ?prompts
+   list( "Enter the first point."
+   "Enter the next point." )
+   ?doneProc "pointsDone"
+)
+)
+
+
+
+procedure( epth( )
+
+enterPath(
+         ?prompts        list(
+                                "Enter the first point:"
+                                "Enter the next point:"
+                                )
+         ?pathWidth layerForm~>numScoops~>value
+	 ?doneProc      "returnPoints"
+        )
+) 
+
+
+procedure(ia()
+          cv = geGetEditCellView()
+   
+            foreach(inst cv~>instances
+                     inst~>orient = "R0";
+		 )
+    
+                     geSelectArea()
+                     InstA = geGetSelectedSet();
+                     geDeselectAll() 
+    ib();
+);
+procedure(ib()
+    geSelectArea()
+        InstB = geGetSelectedSet();
+        geDeselectAll()
+    centroid(); 
+);
+procedure(place_it()
+cv = geGetEditCellView()
+
+pInst = geGetSelectedSet()
+
+pBox=car(pInst~>bBox);
+len=abs(xCoord(upperRight(aBox)) - xCoord(lowerLeft(aBox)))
+height= abs(yCoord(upperRight(aBox)) - yCoord(lowerLeft(aBox)))
+
+build_ref_pt()
+x=nth(0 ref_pt);
+y=nth(1 ref_pt);
+
+
+Aplace~>xy = list(x y)
+
+
+);end procedure
+
+procedure(centroid()
+cv = geGetEditCellView()
+build_ref_pt()
+;pl1 = list("A" "B" "B" "A");
+;pl2 = list("B" "A" "A" "B");
+pl1 = list("A" "B" "B" "A" "A" "B" "B" "A" );
+pl2 = list("B" "A" "A" "B" "B" "A" "A" "B" );
+;;pl3 = list("B" "A" "A" "B" "B" "A" "A" "B" );
+;;pl4 = list("A" "B" "B" "A" "A" "B" "B" "A" );
+aBox=car(InstA~>bBox);
+len=abs(xCoord(upperRight(aBox)) - xCoord(lowerLeft(aBox)))
+height= abs(yCoord(upperRight(aBox)) - yCoord(lowerLeft(aBox)))
+
+Alen= length(InstA);
+Blen= length(InstB);
+
+x=nth(0 ref_pt);
+y=nth(1 ref_pt);
+cntA = 0;
+cntB = 0;
+pt_ref = nil
+foreach(pls1 pl1
+           if(pls1 == "A" then
+	       Aplace = nth(cntA InstA);
+	       Aplace~>xy = list(x y)
+	       dbCreateLabel(cv "text"  centerBox(Aplace~>bBox) Aplace~>baseName "centerCenter" "R0" "roman" .5)
+	       cntA++;
+	       x = x + len;
+	       
+	       );endif
+	   if(pls1 == "B" then
+	       Bplace = nth(cntB InstB);
+	       Bplace~>xy = list(x y)
+	       dbCreateLabel(cv "text"  centerBox(Bplace~>bBox) Bplace~>baseName "centerCenter" "R0" "roman" .5)
+	       cntB++;
+	       x = x + len;
+	     
+	    );
+	    );
+	
+	
+x=nth(0 ref_pt);
+y=nth(1 ref_pt);
+y=y+height
+
+pt_ref = nil
+foreach(pls2 pl2
+           if(pls2 == "A" then
+	       Aplace = nth(cntA InstA);
+	       Aplace~>xy = list(x y)
+	       dbCreateLabel(cv "text"  centerBox(Aplace~>bBox) Aplace~>baseName "centerCenter" "R0" "roman" .5)
+	       cntA++;
+	       x = x + len;
+	      
+	      
+	       );endif
+	   if(pls2 == "B" then
+	       Bplace = nth(cntB InstB);
+	       Bplace~>xy = list(x y)
+	       dbCreateLabel(cv "text"   centerBox(Bplace~>bBox) Bplace~>baseName "centerCenter" "R0" "roman" .5)
+	       cntB++;
+	       x = x + len;
+	     
+	    );
+	    );
+	
+	)
+
+
+
+procedure(cyclayer(@optional (win hiGetCurrentWindow()))
+let((techId )
+
+unless(win && deGetEditRootType(win) == "maskLayout"
+	error("This form can be called only if current window is layout\n")
+	)
+techId=techGetTechFile(win~>cellView)
+;; Layer cyclic field
+
+
+someInt = hiCreateFloatField(
+?name 'numScoops 
+?prompt "Enter Path Width" 
+?value 2.0 
+?defValue 1.0 )
+
+
+layerField1 = hiCreateLayerCyclicField(
+				techId
+				 "LPPs" 
+				 "" 
+				leGetValidLayerList(techId)
+				 nil
+				 'layerField
+		)
+;; Purpose selection field 
+purpField=hiCreateRadioField(
+		?name		`purpField
+		?prompt		"Choose Purpose"
+		?choices	list("all purpose" "drawing" "pin" "net" "label" "boundary")
+		?callback  list("CCSPurpCall(hiGetCurrentForm())")
+		)
+;; Form creation
+
+
+
+layerForm = hiCreateForm('layerForm 
+			 "Mirror Path"
+			 "mirpath()"
+			  list(layerField1 someInt)
+			  "")
+			 
+;; Saving techfile ID on the form for later use
+layerForm->tech=techId
+hiDisplayForm(layerForm)
+);let
+);proc
+
+procedure(CCSPurpCall(layerForm)
+let((layerList layerList1 layerList2 purp)
+;; current purpose
+purp=layerForm->purpField->value
+;; Valid layer purpose pair list
+layerList=leGetValidLayerList(layerForm->tech)
+
+;; For all purpose populate all
+if(purp == "all purpose"
+	then 
+	layerList1=layerList
+
+;; Else filter the layers
+	else
+	layerList1=setof(layer layerList cadr(layer) == purp)
+	) ;if
+
+;; If layers with purpose found then show layers with that purpose
+;; Otherwise show all purposes 
+if(layerList1
+	then
+
+/* 
+Layer cyclic field expects layer icon information. Just the
+layer purpose pair list like '(("M1" "drawing") ("M2" "drawing")...)
+does not help. A layer icon information can be generated from the
+layer purpose pair list using command hiMakeLPChoiceList(). 
+(
+(62924242 102 26 "M1 (drawing)")
+(62924244 102 26 "M2 (drawing)")
+------
+------
+)
+
+*/
+
+	layerList2=hiMakeLPChoiceList(layerForm->tech layerList1)
+	layerForm->layerField->choices=layerList2
+	else
+	printf("Purpose %s not found, showing all purpose\n" purp)
+	layerList2=hiMakeLPChoiceList(layerForm->tech layerList)
+	layerForm->layerField->choices=layerList2
+	) ;if
+    ) ;let
+) ;proc
+
+procedure(cpath()
+	win = hiGetCurrentWindow()
+	unless(win && deGetEditRootType(win) == "maskLayout"
+	error("This form can be called only if current window is layout\n")
+	)
+	someInt = hiCreateFloatField(
+                  ?name 'numScoops 
+                  ?prompt "Enter Path Width" 
+                  ?value 2.0
+                  ?defValue 1.0 )
+	
+	A = techGetTechFile( win~>cellView)
+        B = techGetTechFile( win~>cellView)
+        AA = hiCreateLayerCyclicField( A "From" "" nil nil 'field1)
+        BB = hiCreateLayerCyclicField( B "To" "" nil nil 'field2) 
+        layerForm = hiCreateForm('FormConvert "Cross Path" 
+                                   "crosspath()"  list( AA BB someInt) "")
+hiDisplayForm(layerForm)
+)
+
+;;;encrypt("code.il" "code.ile")
+
+
+ 

@@ -1,0 +1,145 @@
+#############################################################################################
+# Script gets svrf rule deck filename and checknames from the command line arguments,
+# finds original layers in the derived layers tree for the check_names,
+# and generates check-override file, using calibre -ys capabilities.
+#############################################################################################
+proc help { { txt "" } } {
+  puts ""
+  puts $txt
+  puts ""
+  puts "Usage: calibre -ys -exec [file tail $::argv0] <-option> <values> ... "
+  puts "  Options: -ruledeck    <filename>    Ruledeck file name"
+  puts "           -checklist   <checknames>  List of checknames"
+  puts "           -checkfile   <filename>    Checknames are in the specified file"
+  puts "           -all                       All checks from the ruledeck file"
+  puts "           -help                      Print this help"
+  puts "  Notes:   1. Option \"-ruledeck\" is mandatory."
+  puts "           2. One of the options -checklist|-checkfile|-all should be specified."
+  puts "           3. Options -checklist|-checkfile|-all are mutual exclusive."
+  puts "           4. Glob matching allowed for the check names."
+  puts ""
+  exit 1
+}
+
+#############################################################################################
+# trim_all
+#############################################################################################
+proc trim_all { s } {
+  set ret [list]
+  foreach it [split $s] { if { $it != "" } { lappend ret $it } }
+  return [join $ret]
+}
+
+#############################################################################################
+# read_file
+#############################################################################################
+proc read_file { fn } {
+  set hfile [open $fn]
+  set ret [list]
+  while { ! [eof $hfile] } {
+    set s [trim_all [gets $hfile]]
+    if { $s == "" } { continue }
+    if { [string index $s 0] == "#" } { continue }
+    lappend ret $s
+  }
+  return $ret
+}
+
+#############################################################################################
+# run
+#############################################################################################
+set fn_ruledeck ""
+set fn_checkfile ""
+set lst_checks [list]
+set lst_allchecks [list]
+set lst_validchecks [list]
+set flg_all 0
+set flg_help 0
+set flg_excl 0
+set it_args 0
+
+set argcnt [llength $argv]
+if { $argcnt == 0 } { help }
+
+while { $it_args < $argcnt } {
+  switch -exact -- [lindex $argv $it_args] {
+    -help         { incr it_args ; set flg_help 1 }
+    -ruledeck     { incr it_args ; set fn_ruledeck [lindex $argv $it_args] }
+    -checklist    {   incr flg_excll
+
+                      while { $it_args < $argcnt } {
+                      incr it_args
+                      set checkname [lindex $argv $it_args]
+                      if { [string index $checkname 0] == "-" } { incr it_args -1 ; break }
+                      append lst_checks "$checkname "
+                    }
+                    set lst_checks [split [string trim $lst_checks]]
+                  }
+    -checkfile    { incr it_args ; set fn_checkfile [lindex $argv $it_args] ; incr flg_excl }
+    -all          { set flg_all 1 ; incr flg_excl }
+    default       { help "Invalid option [lindex $argv $it_args]"}
+  }
+  incr it_args
+}
+
+# check cmdline args
+if { $flg_help == 1 } { help }
+if { $fn_ruledeck == "" } { help "-ruledeck is mandatory option." }
+if { ! [file isfile $fn_ruledeck] } { help "$fn_ruledeck - no such file" }
+if { $flg_excl == 0 } { help "One of the options -checklist|-checkfile|-all should be specified."}
+if { $flg_excl != 1 } { help "Options -checklist|-checkfile|-all are mutual exclusive."}
+if { $fn_checkfile != "" } {
+  if { ! [file isfile $fn_checkfile] } { help "$fn_checkfile - no such file" }
+  set lst_checks [read_file $fn_checkfile]
+}
+
+# get list of all checks in the ruledeck file
+set hsvrf [dfm::create_svrf_analyzer $fn_ruledeck]
+set lst_allchecks [dfm::get_svrf_data $hsvrf -list_checks]
+
+# get valid checknames
+if { $flg_all == 1 } {
+  set lst_validchecks $lst_allchecks
+} else {
+  foreach checkname $lst_checks {
+    set vals [lsearch -glob -all -inline $lst_allchecks $checkname]
+    if { $vals != "" } {
+      append lst_validchecks "$vals "
+    } else {
+      puts "WARNING. No matching found: $checkname"
+    }
+  }
+  set lst_validchecks [split [string trim $lst_validchecks]]
+}
+
+set lst_validchecks [lsort -unique $lst_validchecks]
+
+# create check-override file. as a filename use ruledeck filename with extension ".ys.override"
+set hfile [open $fn_ruledeck.ys.cto w]
+
+puts $hfile "#############################################################################################"
+puts $hfile "# DRC RVE check text override file. Ruledeck: $fn_ruledeck"
+puts $hfile "#############################################################################################"
+puts $hfile ""
+foreach check_name $lst_validchecks {
+  # get layers list for the check_name
+  set llayers [dfm::get_svrf_data $hsvrf -list_layers $check_name]
+  # for each layer in the check_name find derivation tree and extract original layers from them
+  set lorig [list]
+  foreach layer $llayers {
+    set htrace [dfm::get_svrf_data $hsvrf -layer_trace $layer]
+    while { $htrace != "" } {
+      set layername [dfm::get_svrf_data $htrace -layer_name]
+        lappend lorig $layername
+      dfm::inc htrace
+    }
+  }
+  set lorig [lsort -uniq $lorig]
+  puts $hfile "$check_name"
+  puts $hfile "RVE Show Layers: [join $lorig]"
+  puts $hfile "RVE Highlight Color: blue"
+  puts $hfile ""
+}
+close $hfile
+puts "$fn_ruledeck.ys.cto saved."
+

@@ -1,0 +1,1 @@
+vncserver -allwaysshared -allowedusers x0122550:f,x012032:v -geometry 1900x1000 -depth 24 -cc 4
